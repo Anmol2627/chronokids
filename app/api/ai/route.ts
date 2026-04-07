@@ -3,7 +3,8 @@ import { aiService } from '@/lib/ai-service'
 
 export async function POST(request: NextRequest) {
   try {
-    const { userInput, type } = await request.json()
+    const body = await request.json()
+    const { userInput, type, character, userMessage, conversationHistory, scenario } = body
 
     if (!userInput || !type) {
       return NextResponse.json(
@@ -30,11 +31,21 @@ export async function POST(request: NextRequest) {
         response = await aiService.generateScenario(userInput)
         break
       case 'dialogue':
-        const { character, userMessage, conversationHistory } = await request.json()
+        if (!character || !userMessage) {
+          return NextResponse.json(
+            { error: 'Missing required fields for dialogue: character and userMessage' },
+            { status: 400 }
+          )
+        }
         response = await aiService.generateDialogue(character, userMessage, conversationHistory)
         break
       case 'environment':
-        const { scenario } = await request.json()
+        if (!scenario) {
+          return NextResponse.json(
+            { error: 'Missing required field for environment: scenario' },
+            { status: 400 }
+          )
+        }
         response = await aiService.generateEnvironment(scenario)
         break
       default:

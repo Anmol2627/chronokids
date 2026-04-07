@@ -52,3 +52,19 @@ If you see "AI service not available" error:
 4. Check browser console for errors
 
 The AI integration will transform ChronoKids into a dynamic educational platform that can generate unlimited historical content!
+
+## Vercel Deployment
+
+Add these environment variables in Vercel Project Settings before deploying:
+
+```env
+OPENAI_API_KEY=your_openai_api_key_here
+OPENAI_MODEL=gpt-4-turbo-preview
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
+
+Notes:
+- `OPENAI_API_KEY` must stay server-side only. Do not use `NEXT_PUBLIC_OPENAI_API_KEY`.
+- The Supabase URL and anon key are safe to expose publicly and are meant for client-side use.
+- If you do not set `OPENAI_API_KEY`, the app will still deploy, but AI-powered routes will return fallback behavior.

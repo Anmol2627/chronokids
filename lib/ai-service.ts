@@ -1,3 +1,5 @@
+import 'server-only'
+
 // AI Service for Dynamic Historical Content Generation
 // This service handles AI-powered content creation for ChronoKids
 
@@ -56,12 +58,9 @@ class AIService {
   private maxRetries: number = 3
 
   constructor() {
-    // Initialize API key from environment variables
-    // Try both client-side and server-side environment variables
-    this.apiKey = process.env.OPENAI_API_KEY || process.env.NEXT_PUBLIC_OPENAI_API_KEY || null
-    console.log('AI Service - API Key loaded:', !!this.apiKey)
-    console.log('AI Service - OPENAI_API_KEY found:', !!process.env.OPENAI_API_KEY)
-    console.log('AI Service - NEXT_PUBLIC_OPENAI_API_KEY found:', !!process.env.NEXT_PUBLIC_OPENAI_API_KEY)
+    // Keep the API key server-side only for Vercel and Next.js deployments.
+    this.apiKey = process.env.OPENAI_API_KEY || null
+    this.model = process.env.OPENAI_MODEL || this.model
   }
 
   /**
