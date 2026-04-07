@@ -1,0 +1,85 @@
+# v0 sandbox internal files
+__v0_runtime_loader.js
+__v0_devtools.tsx
+__v0_jsx-dev-runtime.ts
+.snowflake/
+.v0-trash/
+.vercel/
+next.user-config.*
+
+# Environment variables (keep local, but don't commit to repo)
+# .env.local
+
+# Common ignores
+node_modules
+.next/
+.DS_Store
+.vercel
+
+# Dependencies
+node_modules
+.next
+
+# Environment variables
+.env.local
+
+# Build outputs
+.vercel
+dist
+*.tsbuildinfo
+
+# Local logs
+*.log
+
+# IDE
+.vscode
+.idea
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Desktop files (exclude from git)
+../AI-ML-Task-4/
+../AN_p/
+../Anmol_Resume.pdf
+../Clash of Clans.lnk
+../Disco Elysium - The Final Cut.url
+../Eternights.url
+../Jarvis/
+../KANBAN_GDG/
+../Loom.lnk
+../My Name is Atulya.py
+../New folder*/
+../PlayGTAV - Shortcut.lnk
+../STEP/
+../TASK_CN/
+../TLauncher.lnk
+../Trae.lnk
+../UC1PrintOOPS/
+../ai-interview-system/
+../ai_society_simulator/
+../desktop.ini
+../emergent/
+../export/
+../final*/
+../foundathon*/
+../gdg/
+../gitdemo/
+../gittrial/
+../health/
+../hrcc/
+../ipl-prediction-system/
+../mindspace/
+../mlmodels/
+../newww/
+../notes-api/
+../project*/
+../safecircle/
+../srm-insider-task/
+../trash/
+../trial/
+../uidai_hackathon_2026/
+../vector_db/
+../yt_backend/
+../ytproject/
