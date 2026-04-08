@@ -29,69 +29,12 @@ export function AdventurePanel() {
     { id: 8, text: `Complete the ${currentScenario.title} mission`, completed: false },
   ]
 
-  const infoTags = [
-    { emoji: currentScenario.emoji, text: currentScenario.title },
-    { emoji: '🌍', text: currentScenario.design.locationLabel },
-    { emoji: '✨', text: currentScenario.environment.atmosphere },
-  ]
-
   const rewardLabel = `${currentScenario.character.name} Explorer Badge`
   const completedCount = missionObjectives.filter((objective) => objective.completed).length
   const glowColor = currentScenario.design.gradient.glow
 
   return (
     <div className="h-full overflow-y-auto p-4 bg-[#fffbf5]">
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex items-center gap-2 px-3 py-2 rounded-full bg-white mb-4 shadow-sm"
-        style={{ border: `1px solid ${currentScenario.character.color}40` }}
-      >
-        <span>{currentScenario.emoji}</span>
-        <span className="text-sm text-[#451a03] font-medium">{currentScenario.design.locationLabel}</span>
-        <motion.span
-          className="w-2 h-2 rounded-full"
-          style={{ backgroundColor: currentScenario.character.color }}
-          animate={{ opacity: [1, 0.5, 1] }}
-          transition={{ duration: 1, repeat: Infinity, type: 'tween' }}
-        />
-      </motion.div>
-
-      <div className="relative rounded-2xl overflow-hidden mb-4 bg-white aspect-video shadow-md">
-        <div
-          className="absolute inset-0 flex items-center justify-center"
-          style={{
-            background: `linear-gradient(180deg, ${currentScenario.design.gradient.from}, ${currentScenario.design.gradient.to})`,
-          }}
-        >
-          <span className="text-6xl">{currentScenario.character.emoji}</span>
-        </div>
-
-        <div className="absolute inset-0">
-          {currentScenario.design.sceneObjects.map((object) => (
-            <div
-              key={object.label}
-              className="absolute -translate-x-1/2 -translate-y-1/2 px-2 py-1 rounded-full bg-white/90 text-[10px] text-[#451a03] shadow-sm flex items-center gap-1"
-              style={{ left: `${object.x}%`, top: `${object.y}%` }}
-            >
-              <span>{object.emoji}</span>
-              <span>{object.label}</span>
-            </div>
-          ))}
-        </div>
-
-        <div className="absolute bottom-2 left-2 right-2 flex gap-1 flex-wrap">
-          {infoTags.map((tag) => (
-            <span
-              key={tag.text}
-              className="px-2 py-1 rounded-full bg-white/90 text-[10px] text-[#451a03] shadow-sm"
-            >
-              {tag.emoji} {tag.text}
-            </span>
-          ))}
-        </div>
-      </div>
-
       <div className="mb-6">
         <h3 className="text-xs font-bold text-[#a16207] uppercase tracking-wider mb-3">
           Historical Friend
@@ -133,22 +76,15 @@ export function AdventurePanel() {
         </div>
       </div>
 
-      <div
-        className="rounded-2xl bg-white p-4 shadow-md"
-        style={{ border: `2px solid ${currentScenario.character.color}40` }}
-      >
-        <div className="flex items-center gap-2 mb-3">
-          <span className="text-lg">{currentScenario.emoji}</span>
-          <h3 className="font-display font-bold" style={{ color: currentScenario.character.color }}>
-            YOUR MISSION
-          </h3>
-        </div>
-
+      <div className="mb-6">
+        <h3 className="text-xs font-bold text-[#a16207] uppercase tracking-wider mb-3">
+          Your Mission
+        </h3>
         <p className="font-bold text-[#451a03] text-sm mb-3">
           Discover {currentScenario.dialogue.discoveries[0]} and master the story of {currentScenario.character.name}.
         </p>
 
-        <div className="flex items-center gap-1 mb-4">
+        <div className="flex items-center gap-1">
           {Array.from({ length: 8 }).map((_, i) => (
             <motion.div
               key={i}
@@ -162,12 +98,17 @@ export function AdventurePanel() {
             </motion.div>
           ))}
         </div>
+      </div>
 
-        <div className="space-y-2 max-h-48 overflow-y-auto">
+      <div className="mb-6">
+        <h3 className="text-xs font-bold text-[#a16207] uppercase tracking-wider mb-3">
+          Mission Tasks
+        </h3>
+        <div className="space-y-2 mb-4">
           {missionObjectives.map((objective) => (
             <motion.div
               key={objective.id}
-              className="flex items-start gap-2 p-2 rounded-lg"
+              className="flex items-start gap-2 p-2 rounded-lg bg-white shadow-sm"
               style={
                 objective.current
                   ? {
@@ -211,7 +152,7 @@ export function AdventurePanel() {
           ))}
         </div>
 
-        <div className="mt-4 pt-4 border-t border-[#fbbf24]/30">
+        <div className="pt-4 border-t border-[#fbbf24]/30">
           <div className="flex items-center gap-2 text-sm">
             <span style={{ color: glowColor }}>{currentScenario.emoji}</span>
             <span className="text-[#78350f]">Earn:</span>

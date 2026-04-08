@@ -71,22 +71,26 @@ export function Navigation() {
             <ChronoKidsLogo size="sm" animated={false} />
           </Link>
 
-          {/* Breadcrumbs */}
-          <nav className="flex items-center gap-2 text-sm" aria-label="Breadcrumb navigation">
-            {getBreadcrumbs().map((crumb, index) => (
-              <div key={crumb.href} className="flex items-center gap-2">
-                {index > 0 && <span className="text-purple-400" aria-hidden="true">→</span>}
-                <Link 
-                  href={crumb.href}
-                  className={`hover:text-[#f97316] transition-colors focus:outline-none focus:ring-2 focus:ring-purple-400 rounded px-1 py-0.5 ${
-                    pathname === crumb.href ? 'text-white font-semibold' : 'text-purple-200'
+          {/* Navigation Menu */}
+          <nav className="flex items-center gap-6" aria-label="Main navigation">
+            {navItems.map((item) => {
+              const isActive = pathname === item.href
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-purple-400 ${
+                    isActive 
+                      ? 'bg-gradient-to-r from-purple-500/20 to-blue-500/20 text-white shadow-lg shadow-purple-500/30' 
+                      : 'text-purple-200 hover:text-white hover:bg-purple-500/10'
                   }`}
-                  aria-current={pathname === crumb.href ? 'page' : undefined}
+                  aria-current={isActive ? 'page' : undefined}
                 >
-                  {crumb.label}
+                  <item.icon className="w-4 h-4" />
+                  <span className="font-medium">{item.label}</span>
                 </Link>
-              </div>
-            ))}
+              )
+            })}
           </nav>
 
           {/* Right side */}

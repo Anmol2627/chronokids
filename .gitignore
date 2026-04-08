@@ -83,3 +83,5 @@ Thumbs.db
 ../vector_db/
 ../yt_backend/
 ../ytproject/
+
+.vercel
