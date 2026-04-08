@@ -243,13 +243,6 @@ export function WorldViewport({
             </div>
           </div>
 
-          {/* Atmosphere chip */}
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 rounded-full bg-white/90 shadow-lg">
-            <span>{currentScenario.emoji}</span>
-            <span className="text-xs font-semibold text-[#451a03]">
-              {currentScenario.environment.atmosphere}
-            </span>
-          </div>
         </div>
       </div>
 

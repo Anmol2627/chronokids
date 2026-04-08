@@ -9,7 +9,7 @@ import { ChronoKidsLogo } from '@/components/chronokids-logo'
 
 export function HeroSection() {
   return (
-    <section className="min-h-screen flex items-center justify-center px-4 pt-20">
+    <section className="min-h-screen flex items-start justify-center px-4 pt-24 pb-16">
       <div className="max-w-7xl mx-auto w-full text-center">
         {/* Main centered ChronoKids logo */}
         <div className="mb-8">
@@ -54,7 +54,7 @@ export function HeroSection() {
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.8 }}
-          className="relative w-full max-w-4xl mx-auto h-64 md:h-80 rounded-3xl overflow-hidden shadow-2xl mb-12"
+          className="relative w-full max-w-4xl mx-auto h-64 md:h-80 rounded-3xl overflow-hidden shadow-2xl mb-12 mt-20 md:mt-32"
         >
           <Image
             src="/home.png"

@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Home, Sparkles, MessageCircle, BookOpen, Bell } from 'lucide-react'
+import { Home, Sparkles, MessageCircle, BookOpen } from 'lucide-react'
 import { ChronoKidsLogo } from '@/components/chronokids-logo'
 import { useGame } from '@/lib/game-state'
 import { AdventureBook } from '@/components/adventure-book'
@@ -110,28 +110,6 @@ export function Navigation() {
               <span className="text-lg">📖</span>
               <span className="font-display font-bold text-amber-200 text-sm hidden lg:inline">My Book</span>
             </motion.button>
-
-            {/* Notification Bell */}
-            <motion.button 
-              className="relative p-2 rounded-full hover:bg-purple-500/20 transition-colors"
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <Bell className="w-5 h-5 text-purple-200" />
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-[#f97316] text-white rounded-full text-[10px] font-bold flex items-center justify-center">
-                3
-              </span>
-            </motion.button>
-
-            {/* Avatar */}
-            <motion.div 
-              className="w-10 h-10 rounded-full bg-gradient-to-br from-[#f97316] via-[#a855f7] to-[#0ea5e9] p-0.5 cursor-pointer shadow-lg shadow-purple-500/30"
-              whileHover={{ scale: 1.1 }}
-            >
-              <div className="w-full h-full rounded-full bg-[#1e1b4b] flex items-center justify-center">
-                <span className="text-lg">🚀</span>
-              </div>
-            </motion.div>
           </div>
         </div>
       </motion.nav>
