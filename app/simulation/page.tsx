@@ -14,6 +14,7 @@ import { useGame } from '@/lib/game-state'
 import { CustomScenario, getScenarioById, resolveScenarioFromText } from '@/lib/custom-scenarios'
 import ScoringSystem from '@/lib/scoring-system'
 import LeaderboardService from '@/lib/supabase-service'
+import { kidDiscoveryLine, kidDiscoveryQuestion, kidifyDialogue } from '@/lib/kid-dialogue'
 
 interface Message {
   id: string
@@ -39,7 +40,7 @@ const getCharacterMessages = (scenario: CustomScenario): Message[] => [
     id: '1',
     type: 'character',
     character: scenario.id,
-    content: scenario.dialogue.greeting,
+    content: kidifyDialogue(scenario.dialogue.greeting, { characterName: scenario.character.name }),
   },
 ]
 
@@ -50,9 +51,21 @@ function SimulationContent() {
   const [messages, setMessages] = useState<Message[]>(getCharacterMessages(currentScenario))
   const [input, setInput] = useState('')
   const [isTyping, setIsTyping] = useState(false)
-  const [discoveries, setDiscoveries] = useState<string[]>(currentScenario.dialogue.discoveries.slice(0, 2))
+  const [discoveries, setDiscoveries] = useState<string[]>([])
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const [showMobilePanel, setShowMobilePanel] = useState<'adventure' | 'discovery' | null>(null)
+  const [showMobilePanel, setShowMobilePanel] = useState<'adventure' | 'discoveries' | 'journal' | null>(null)
+
+  type SceneReaction = 'idle' | 'thinking' | 'lightbulb' | 'happy'
+  const [sceneReaction, setSceneReaction] = useState<SceneReaction>('idle')
+  const initialSuggestedConcept =
+    currentScenario.dialogue.discoveries[1] ?? currentScenario.dialogue.discoveries[0]
+  const [sceneBubbleText, setSceneBubbleText] = useState<string>(
+    initialSuggestedConcept
+      ? `Hi explorer! Want to learn ${kidDiscoveryQuestion(initialSuggestedConcept)}?`
+      : kidifyDialogue(currentScenario.dialogue.greeting, { characterName: currentScenario.character.name })
+  )
+  const [lastUnlockedDiscovery, setLastUnlockedDiscovery] = useState<string | null>(null)
+  const [celebratingDiscovery, setCelebratingDiscovery] = useState<string | null>(null)
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -79,7 +92,18 @@ function SimulationContent() {
   useEffect(() => {
     const scenario = getActiveScenario(state.currentAdventure)
     setMessages(getCharacterMessages(scenario))
-    setDiscoveries(scenario.dialogue.discoveries.slice(0, 2))
+    setDiscoveries([])
+    setSceneReaction('idle')
+    setSceneBubbleText(
+      (() => {
+        const suggestedConcept = scenario.dialogue.discoveries[1] ?? scenario.dialogue.discoveries[0]
+        return suggestedConcept
+          ? `Hi explorer! Want to learn ${kidDiscoveryQuestion(suggestedConcept)}?`
+          : kidifyDialogue(scenario.dialogue.greeting, { characterName: scenario.character.name })
+      })()
+    )
+    setLastUnlockedDiscovery(null)
+    setCelebratingDiscovery(null)
     
     // Award points for completing adventure
     const playerName = localStorage.getItem('playerName')
@@ -108,6 +132,7 @@ function SimulationContent() {
     setMessages(prev => [...prev, userMessage])
     setInput('')
     setIsTyping(true)
+    setSceneReaction('thinking')
 
     // Award points for character interaction
     if (playerName) {
@@ -117,18 +142,20 @@ function SimulationContent() {
 
     const normalizedInput = submittedInput.toLowerCase()
     let matchedResponses: string[] = []
+    let matchedKeyword: string | null = null
 
     for (const [keyword, responses] of Object.entries(activeScenario.dialogue.responses)) {
       if (normalizedInput.includes(keyword.toLowerCase())) {
         matchedResponses = responses
+        matchedKeyword = keyword
         break
       }
     }
 
     if (matchedResponses.length === 0) {
-      matchedResponses = [
-        `${activeScenario.character.name} smiles and points around the scene. "${activeScenario.environment.atmosphere}. Ask me about ${Object.keys(activeScenario.dialogue.responses).slice(0, 2).join(' or ')} and we will keep exploring together."`
-      ]
+      const options = Object.keys(activeScenario.dialogue.responses).slice(0, 2).join(' or ')
+      matchedResponses = [`${activeScenario.character.name} smiles! Let's explore. Ask about ${options}.`]
+      matchedKeyword = 'help'
     }
 
     const nextDiscovery = activeScenario.dialogue.discoveries.find(
@@ -140,14 +167,21 @@ function SimulationContent() {
 
       setTimeout(() => {
         const shouldRevealDiscovery = Boolean(isLastResponse && nextDiscovery)
+        const assistantContent =
+          shouldRevealDiscovery && nextDiscovery
+            ? kidDiscoveryLine(nextDiscovery)
+            : kidifyDialogue(response, { characterName: activeScenario.character.name, keyword: matchedKeyword ?? undefined })
+
         const characterMessage: Message = {
           id: `${Date.now()}-${index}`,
           type: shouldRevealDiscovery ? 'discovery' : 'character',
           character: activeScenario.id,
-          content: response,
-          concept: shouldRevealDiscovery ? nextDiscovery : undefined,
+          content: assistantContent,
+          concept: shouldRevealDiscovery ? nextDiscovery! : undefined,
         }
 
+        setSceneBubbleText(assistantContent)
+        setSceneReaction(shouldRevealDiscovery ? 'lightbulb' : 'idle')
         setMessages((prev) => [...prev, characterMessage])
 
         if (shouldRevealDiscovery && nextDiscovery) {
@@ -158,6 +192,11 @@ function SimulationContent() {
 
             return [...prev, nextDiscovery]
           })
+          setLastUnlockedDiscovery(nextDiscovery)
+          setCelebratingDiscovery(nextDiscovery)
+          setTimeout(() => setLastUnlockedDiscovery(null), 1600)
+          setTimeout(() => setCelebratingDiscovery(null), 2600)
+          setTimeout(() => setSceneReaction('happy'), 350)
           showToast('discovery', 'New Discovery!', `You learned about ${nextDiscovery}!`)
 
           // Award points for discovery
@@ -169,6 +208,7 @@ function SimulationContent() {
 
         if (isLastResponse) {
           setIsTyping(false)
+          setTimeout(() => setSceneReaction('idle'), shouldRevealDiscovery ? 1200 : 500)
         }
       }, 900 + index * 1200)
     })
@@ -181,12 +221,12 @@ function SimulationContent() {
 
       <main className="relative z-10 h-screen pt-16 pb-0 md:pb-0 flex">
         <div className="hidden lg:block w-[260px] flex-shrink-0 border-r border-[#fbbf24]/30">
-          <AdventurePanel />
+          <AdventurePanel discoveries={discoveries} lastUnlockedDiscovery={lastUnlockedDiscovery} />
         </div>
 
         <div className="flex-1 flex flex-col min-w-0">
           <div className="h-[30%] min-h-[180px] border-b border-[#fbbf24]/30">
-            <WorldViewport />
+            <WorldViewport speechBubbleText={sceneBubbleText} reaction={sceneReaction} />
           </div>
 
           <div className="flex-1 flex flex-col min-h-0 bg-[#fffbf5]">
@@ -354,7 +394,7 @@ function SimulationContent() {
 
             <div className="px-4 py-2 flex gap-2 overflow-x-auto bg-[#fef3e2]">
               <span className="text-xs text-[#a16207] flex-shrink-0 self-center">Ask About:</span>
-              {currentScenario.promptSuggestions.map((suggestion, index) => (
+              {currentScenario.promptSuggestions.slice(0, 2).map((suggestion, index) => (
                 <motion.button
                   key={index}
                   initial={{ opacity: 0, scale: 0.9 }}
@@ -383,7 +423,7 @@ function SimulationContent() {
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                  placeholder={`Ask ${currentScenario.character.name} anything! 💬`}
+                  placeholder="Ask anything..."
                   className="flex-1 bg-transparent px-4 py-2 text-[#451a03] placeholder:text-[#a16207] focus:outline-none"
                 />
                 <button className="p-2 rounded-full hover:bg-white transition-colors">
@@ -411,20 +451,85 @@ function SimulationContent() {
         </div>
       </main>
 
-      <div className="fixed bottom-20 left-4 right-4 flex gap-2 lg:hidden z-40">
+      <AnimatePresence>
+        {celebratingDiscovery && (
+          <motion.div
+            initial={{ opacity: 0, y: 20, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 18, scale: 0.98 }}
+            transition={{ duration: 0.25 }}
+            className="absolute z-50 left-1/2 -translate-x-1/2 top-[108px] md:top-[136px] w-[min(92vw,420px)]"
+          >
+            <div
+              className="rounded-3xl bg-white border-2 shadow-xl relative overflow-hidden"
+              style={{ borderColor: `${currentScenario.character.color}` }}
+            >
+              <div
+                className="absolute inset-0"
+                style={{
+                  background:
+                    'radial-gradient(circle at 20% 10%, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0) 40%), radial-gradient(circle at 80% 20%, rgba(251,191,36,0.25) 0%, rgba(251,191,36,0) 45%)',
+                }}
+              />
+              <div className="relative p-5">
+                <div className="flex items-center gap-3">
+                  <div
+                    className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl border-2"
+                    style={{
+                      backgroundColor: `${currentScenario.character.color}20`,
+                      borderColor: `${currentScenario.character.color}40`,
+                    }}
+                  >
+                    {currentScenario.character.emoji}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p
+                      className="text-xs font-bold uppercase tracking-wider"
+                      style={{ color: currentScenario.character.color }}
+                    >
+                      Discovery unlocked!
+                    </p>
+                    <p className="font-display font-bold text-lg text-[#451a03] truncate">
+                      {celebratingDiscovery}
+                    </p>
+                  </div>
+                  <motion.div
+                    className="text-2xl"
+                    initial={{ rotate: -8, scale: 0.9 }}
+                    animate={{ rotate: 10, scale: 1.05 }}
+                    transition={{ duration: 0.25 }}
+                  >
+                    🎉
+                  </motion.div>
+                </div>
+                <p className="mt-2 text-sm font-semibold text-[#78350f]">Nice work, explorer!</p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className="fixed bottom-20 right-4 z-40 flex flex-col gap-2 lg:hidden">
         <motion.button
           onClick={() => setShowMobilePanel(showMobilePanel === 'adventure' ? null : 'adventure')}
-          className="flex-1 py-3 rounded-xl bg-white border-2 border-[#fbbf24]/40 text-[#78350f] text-sm font-semibold shadow-md"
+          className="py-3 px-4 rounded-2xl bg-white border-2 border-[#fbbf24]/40 text-[#78350f] text-sm font-semibold shadow-md"
           whileTap={{ scale: 0.98 }}
         >
           🎯 Mission
         </motion.button>
         <motion.button
-          onClick={() => setShowMobilePanel(showMobilePanel === 'discovery' ? null : 'discovery')}
-          className="flex-1 py-3 rounded-xl bg-white border-2 border-[#fbbf24]/40 text-[#78350f] text-sm font-semibold shadow-md"
+          onClick={() => setShowMobilePanel(showMobilePanel === 'discoveries' ? null : 'discoveries')}
+          className="py-3 px-4 rounded-2xl bg-white border-2 border-[#fbbf24]/40 text-[#78350f] text-sm font-semibold shadow-md"
           whileTap={{ scale: 0.98 }}
         >
-          📖 Journal
+          📖 Discoveries
+        </motion.button>
+        <motion.button
+          onClick={() => setShowMobilePanel(showMobilePanel === 'journal' ? null : 'journal')}
+          className="py-3 px-4 rounded-2xl bg-white border-2 border-[#fbbf24]/40 text-[#78350f] text-sm font-semibold shadow-md"
+          whileTap={{ scale: 0.98 }}
+        >
+          📝 Journal
         </motion.button>
       </div>
 
@@ -438,7 +543,11 @@ function SimulationContent() {
           >
             <div className="p-4 border-b border-[#fbbf24]/30 flex items-center justify-between">
               <h3 className="font-bold text-[#451a03]">
-                {showMobilePanel === 'adventure' ? '🎯 Your Mission' : '📖 Discovery Journal'}
+                {showMobilePanel === 'adventure'
+                  ? '🎯 Your Mission'
+                  : showMobilePanel === 'discoveries'
+                    ? '📖 Discoveries'
+                    : '📝 Journal'}
               </h3>
               <button
                 onClick={() => setShowMobilePanel(null)}
@@ -449,7 +558,7 @@ function SimulationContent() {
             </div>
             <div className="h-full overflow-y-auto pb-32">
               {showMobilePanel === 'adventure' ? (
-                <AdventurePanel />
+                <AdventurePanel discoveries={discoveries} lastUnlockedDiscovery={lastUnlockedDiscovery} />
               ) : (
                 <DiscoveryPanel discoveries={discoveries} />
               )}

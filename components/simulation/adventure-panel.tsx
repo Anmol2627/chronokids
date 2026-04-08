@@ -1,11 +1,15 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { Star, Check } from 'lucide-react'
 import { useGame } from '@/lib/game-state'
 import { getScenarioById, resolveScenarioFromText } from '@/lib/custom-scenarios'
 
-export function AdventurePanel() {
+type AdventurePanelProps = {
+  discoveries: string[]
+  lastUnlockedDiscovery?: string | null
+}
+
+export function AdventurePanel({ discoveries, lastUnlockedDiscovery }: AdventurePanelProps) {
   const { state } = useGame()
   const currentScenario = (() => {
     if (typeof window !== 'undefined') {
@@ -18,20 +22,11 @@ export function AdventurePanel() {
     return resolveScenarioFromText(state.currentAdventure)
   })()
 
-  const missionObjectives = [
-    { id: 1, text: `Meet ${currentScenario.character.name} in ${currentScenario.design.locationLabel}`, completed: true },
-    { id: 2, text: `Ask about ${currentScenario.dialogue.discoveries[0]}`, completed: true },
-    { id: 3, text: `Discover ${currentScenario.dialogue.discoveries[1]}`, completed: false, current: true },
-    { id: 4, text: `Explore ${currentScenario.dialogue.discoveries[2]}`, completed: false },
-    { id: 5, text: `Unlock ${currentScenario.dialogue.discoveries[3]}`, completed: false },
-    { id: 6, text: `Study the setting: ${currentScenario.environment.setting.split('.')[0]}`, completed: false },
-    { id: 7, text: `Learn how ${currentScenario.character.name} changed history`, completed: false },
-    { id: 8, text: `Complete the ${currentScenario.title} mission`, completed: false },
-  ]
-
   const rewardLabel = `${currentScenario.character.name} Explorer Badge`
-  const completedCount = missionObjectives.filter((objective) => objective.completed).length
   const glowColor = currentScenario.design.gradient.glow
+  const flagItems = currentScenario.dialogue.discoveries
+  const isDiscovered = (name: string) => discoveries.includes(name)
+  const discoveredCount = flagItems.filter((f) => isDiscovered(f)).length
 
   return (
     <div className="h-full overflow-y-auto p-4 bg-[#fffbf5]">
@@ -78,87 +73,94 @@ export function AdventurePanel() {
 
       <div className="mb-6">
         <h3 className="text-xs font-bold text-[#a16207] uppercase tracking-wider mb-3">
-          Your Mission
+          Discovery Flags
         </h3>
-        <p className="font-bold text-[#451a03] text-sm mb-3">
-          Discover {currentScenario.dialogue.discoveries[0]} and master the story of {currentScenario.character.name}.
+        <p className="text-xs font-bold text-[#451a03] mb-3">
+          Open the flags to learn new discoveries!
         </p>
 
-        <div className="flex items-center gap-1">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <motion.div
-              key={i}
-              initial={i < completedCount ? { scale: 0 } : {}}
-              animate={i < completedCount ? { scale: 1 } : {}}
-              transition={{ delay: i * 0.1 }}
-            >
-              <Star
-                className={`w-5 h-5 ${i < completedCount ? 'fill-[#fbbf24] text-[#fbbf24]' : 'text-[#e5e7eb]'}`}
-              />
-            </motion.div>
-          ))}
-        </div>
-      </div>
-
-      <div className="mb-6">
-        <h3 className="text-xs font-bold text-[#a16207] uppercase tracking-wider mb-3">
-          Mission Tasks
-        </h3>
         <div className="space-y-2 mb-4">
-          {missionObjectives.map((objective) => (
-            <motion.div
-              key={objective.id}
-              className="flex items-start gap-2 p-2 rounded-lg bg-white shadow-sm"
-              style={
-                objective.current
-                  ? {
-                      backgroundColor: `${currentScenario.character.color}10`,
-                      border: `1px solid ${currentScenario.character.color}30`,
-                    }
-                  : undefined
-              }
-              animate={
-                objective.current
-                  ? {
-                      boxShadow: [
-                        `0 0 0 ${currentScenario.character.color}00`,
-                        `0 0 10px ${currentScenario.character.color}35`,
-                        `0 0 0 ${currentScenario.character.color}00`,
-                      ],
-                    }
-                  : {}
-              }
-              transition={{ duration: 2, repeat: Infinity, type: 'tween' }}
-            >
-              <div
-                className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${
-                  objective.completed ? 'bg-[#10b981]' : 'border-2 border-[#e5e7eb]'
-                }`}
+          {flagItems.map((flag) => {
+            const open = isDiscovered(flag)
+            const isNew = open && lastUnlockedDiscovery === flag
+
+            return (
+              <motion.div
+                key={flag}
+                className="flex items-start gap-3 p-3 rounded-xl bg-white shadow-sm border"
+                style={{
+                  borderColor: open ? `${currentScenario.character.color}35` : '#fbbf24/20',
+                  backgroundColor: open ? `${currentScenario.character.color}08` : 'white',
+                }}
+                initial={false}
+                animate={{
+                  scale: isNew ? [1, 1.05, 1] : 1,
+                  rotate: isNew ? [0, -3, 0] : 0,
+                  boxShadow: isNew
+                    ? [
+                        `0 0 0 rgba(0,0,0,0)`,
+                        `0 0 15px ${currentScenario.character.color}55`,
+                        `0 0 0 rgba(0,0,0,0)`,
+                      ]
+                    : undefined,
+                }}
+                transition={{ duration: isNew ? 0.6 : 0.2 }}
               >
-                {objective.completed && <Check className="w-3 h-3 text-white" />}
-              </div>
-              <span
-                className={`text-xs ${
-                  objective.completed
-                    ? 'text-[#a16207] line-through'
-                    : objective.current
-                    ? 'text-[#451a03] font-medium'
-                    : 'text-[#78350f]'
-                }`}
-              >
-                {objective.text}
-              </span>
-            </motion.div>
-          ))}
+                <div className="relative w-10 h-10 flex items-center justify-center">
+                  {/* Pole */}
+                  <div
+                    className="absolute left-4 top-1 w-0.5 h-8 rounded-full"
+                    style={{ backgroundColor: open ? `${currentScenario.character.color}` : '#e5e7eb' }}
+                  />
+                  {/* Flag cloth */}
+                  <div
+                    className="absolute left-2 top-2 w-8 h-5 rounded-sm rotate-[-8deg] border-2 flex items-center justify-center"
+                    style={{
+                      backgroundColor: open ? `${currentScenario.character.color}22` : '#f3f4f6',
+                      borderColor: open ? `${currentScenario.character.color}55` : '#e5e7eb',
+                    }}
+                  >
+                    <span className="text-xs font-bold">
+                      {open ? '✓' : '🔒'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <p
+                    className={`text-xs font-bold leading-snug ${
+                      open ? 'text-[#451a03]' : 'text-[#78350f] opacity-70 blur-[1.2px]'
+                    }`}
+                    style={{ filter: !open ? 'saturate(0.8)' : undefined }}
+                  >
+                    {flag}
+                  </p>
+                  {open && isNew && (
+                    <p className="text-[11px] font-semibold mt-1" style={{ color: currentScenario.character.color }}>
+                      New discovery!
+                    </p>
+                  )}
+                </div>
+              </motion.div>
+            )
+          })}
         </div>
 
         <div className="pt-4 border-t border-[#fbbf24]/30">
-          <div className="flex items-center gap-2 text-sm">
-            <span style={{ color: glowColor }}>{currentScenario.emoji}</span>
-            <span className="text-[#78350f]">Earn:</span>
-            <span className="font-bold text-[#fbbf24]">450 XP</span>
-            <span className="text-[#78350f]">+</span>
-            <span className="font-bold text-[#451a03]">{rewardLabel}</span>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-sm">
+              <span style={{ color: glowColor }}>{currentScenario.emoji}</span>
+              <span className="text-[#78350f]">Discoveries:</span>
+              <span className="font-bold text-[#451a03]">
+                {discoveredCount}/{flagItems.length}
+              </span>
+            </div>
+            <div className="text-xs font-bold text-[#78350f] whitespace-nowrap">
+              +450 XP
+            </div>
+          </div>
+          <div className="mt-2 text-[11px] font-semibold text-[#78350f]">
+            Reward: {rewardLabel}
           </div>
         </div>
       </div>

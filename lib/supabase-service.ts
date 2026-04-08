@@ -99,7 +99,7 @@ export class LeaderboardService {
     try {
       const { data, error } = await client
         .from('leaderboard')
-        .select('points')
+        .select('name, points')
         .order('points', { ascending: false })
 
       if (error) {

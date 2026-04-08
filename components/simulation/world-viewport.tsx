@@ -5,7 +5,17 @@ import { useState } from 'react'
 import { getScenarioById, resolveScenarioFromText } from '@/lib/custom-scenarios'
 import { useGame } from '@/lib/game-state'
 
-export function WorldViewport() {
+type WorldViewportReaction = 'idle' | 'thinking' | 'lightbulb' | 'happy'
+
+interface WorldViewportProps {
+  speechBubbleText?: string
+  reaction?: WorldViewportReaction
+}
+
+export function WorldViewport({
+  speechBubbleText = 'Hi explorer!',
+  reaction = 'idle',
+}: WorldViewportProps) {
   const { state } = useGame()
   const [hoveredElement, setHoveredElement] = useState<string | null>(null)
   const currentScenario = (() => {
@@ -37,7 +47,7 @@ export function WorldViewport() {
         </span>
       </motion.div>
 
-      <div className="absolute inset-0 flex items-end justify-center">
+      <div className="absolute inset-0 flex items-center justify-center">
         <div className="absolute inset-0">
           <motion.div
             className="absolute top-10 right-8 w-44 h-44 rounded-full blur-3xl"
@@ -66,13 +76,14 @@ export function WorldViewport() {
                 duration: 3 + Math.random() * 2,
                 repeat: Infinity,
                 delay: Math.random() * 2,
-                type: "tween",
+                type: 'tween',
               }}
             />
           ))}
         </div>
 
-        <div className="relative w-full h-full">
+        <div className="relative w-full h-full z-20">
+          {/* Ground strip (keeps the scene feeling like a “stage”) */}
           <div
             className="absolute bottom-0 left-[18%] right-[18%] h-20 rounded-t-[28px] shadow-lg"
             style={{
@@ -80,44 +91,164 @@ export function WorldViewport() {
               borderTop: `3px solid ${currentScenario.character.color}40`,
             }}
           >
-            <div className="absolute inset-x-0 top-0 h-2 rounded-t-[28px]" style={{ backgroundColor: `${currentScenario.character.color}35` }} />
+            <div
+              className="absolute inset-x-0 top-0 h-2 rounded-t-[28px]"
+              style={{ backgroundColor: `${currentScenario.character.color}35` }}
+            />
           </div>
 
-          <div className="absolute inset-0">
-            <motion.div
-              className="absolute top-10 left-1/2 -translate-x-1/2 w-44 rounded-2xl p-4 text-center bg-white/85 shadow-lg"
-              style={{ border: `2px solid ${currentScenario.character.color}35` }}
-              animate={{ y: [0, -4, 0] }}
-              transition={{ duration: 3, repeat: Infinity, type: 'tween' }}
-            >
-              <div className="text-4xl mb-2">{currentScenario.character.emoji}</div>
-              <div className="text-xs font-bold text-[#451a03]">{currentScenario.character.name}</div>
-              <div className="text-[11px]" style={{ color: currentScenario.character.color }}>
-                {currentScenario.character.role}
-              </div>
-            </motion.div>
-
-            {currentScenario.design.sceneObjects.map((object, index) => (
+          {/* Center character stage */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="relative flex flex-col items-center justify-center">
+              {/* Speech bubble */}
               <motion.div
-                key={object.label}
-                className="absolute -translate-x-1/2 -translate-y-1/2 px-3 py-2 rounded-2xl bg-white/90 shadow-md"
-                style={{
-                  left: `${object.x}%`,
-                  top: `${object.y}%`,
-                  border: `1px solid ${currentScenario.character.color}35`,
+                className="relative mb-5 w-[min(78vw,380px)] px-4 py-3 rounded-[20px] bg-white/90 backdrop-blur shadow-lg border-2"
+                style={{ borderColor: `${currentScenario.character.color}50` }}
+                animate={{
+                  scale: reaction === 'happy' ? [1, 1.05, 1] : 1,
+                  y: reaction === 'thinking' ? [0, -2, 0] : 0,
                 }}
-                animate={{ y: [0, index % 2 === 0 ? -6 : -3, 0] }}
-                transition={{ duration: 3 + index * 0.4, repeat: Infinity, type: 'tween' }}
+                transition={{ duration: 0.35 }}
               >
-                <div className="text-2xl text-center">{object.emoji}</div>
-                <div className="text-[10px] text-[#451a03] whitespace-nowrap">{object.label}</div>
+                {/* Bubble tail */}
+                <div
+                  className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[12px] border-r-[12px] border-t-[12px]"
+                  style={{ borderLeftColor: 'transparent', borderRightColor: 'transparent', borderTopColor: 'rgba(255,255,255,0.92)' }}
+                />
+                <p className="text-[#451a03] text-sm leading-snug font-medium">
+                  {reaction === 'thinking' ? (
+                    <span className="inline-flex items-center gap-1">
+                      Thinking
+                      <motion.span
+                        className="inline-block"
+                        animate={{ opacity: [0.2, 1, 0.2] }}
+                        transition={{ duration: 0.9, repeat: Infinity, type: 'tween' }}
+                      >
+                        ...
+                      </motion.span>
+                    </span>
+                  ) : (
+                    speechBubbleText
+                  )}
+                </p>
               </motion.div>
-            ))}
 
-            <div className="absolute bottom-5 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 rounded-full bg-white/90 shadow-lg">
-              <span>{currentScenario.emoji}</span>
-              <span className="text-xs font-semibold text-[#451a03]">{currentScenario.environment.atmosphere}</span>
+              {/* Character blob */}
+              <motion.div
+                className="relative flex items-center justify-center rounded-[60px] w-64 h-64 sm:w-72 sm:h-72 shadow-lg border-4"
+                style={{
+                  borderColor: `${currentScenario.character.color}55`,
+                  background: `radial-gradient(circle at 30% 20%, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.8) 25%, rgba(255,255,255,0.2) 60%), linear-gradient(180deg, rgba(255,255,255,0.75) 0%, ${currentScenario.character.color}14 100%)`,
+                }}
+                animate={{
+                  y:
+                    reaction === 'happy'
+                      ? [0, -10, 0]
+                      : reaction === 'thinking'
+                        ? [0, -6, 0]
+                        : [0, -4, 0],
+                  scale:
+                    reaction === 'happy'
+                      ? [1, 1.06, 1]
+                      : reaction === 'lightbulb'
+                        ? [1, 1.03, 1]
+                        : [1, 1.02, 1],
+                }}
+                transition={{ duration: 2.6, repeat: Infinity, type: 'tween' }}
+              >
+                <div className="absolute inset-0 rounded-[60px] opacity-90" style={{ boxShadow: `inset 0 0 60px ${currentScenario.character.color}20` }} />
+
+                <div className="relative z-10 text-[72px] sm:text-[84px] leading-none">
+                  {currentScenario.character.emoji}
+                </div>
+
+                {/* Simple face overlay (makes the character feel expressive) */}
+                <div className="absolute top-[42%] left-1/2 -translate-x-1/2 flex gap-6">
+                  <motion.div
+                    className="w-7 h-7 rounded-full bg-[#1e1b4b] flex items-center justify-center"
+                    style={{ boxShadow: `0 0 0 6px rgba(255,255,255,0.7) inset` }}
+                    animate={{
+                      scale: reaction === 'thinking' ? 0.9 : reaction === 'happy' ? 1.05 : 1,
+                      y: reaction === 'happy' ? -1 : 0,
+                    }}
+                    transition={{ duration: 0.25 }}
+                  >
+                    <div className="w-2.5 h-2.5 rounded-full bg-white" />
+                  </motion.div>
+                  <motion.div
+                    className="w-7 h-7 rounded-full bg-[#1e1b4b] flex items-center justify-center"
+                    style={{ boxShadow: `0 0 0 6px rgba(255,255,255,0.7) inset` }}
+                    animate={{
+                      scale: reaction === 'thinking' ? 0.9 : reaction === 'happy' ? 1.05 : 1,
+                      y: reaction === 'happy' ? -1 : 0,
+                    }}
+                    transition={{ duration: 0.25 }}
+                  >
+                    <div className="w-2.5 h-2.5 rounded-full bg-white" />
+                  </motion.div>
+                </div>
+
+                <motion.div
+                  className="absolute left-1/2 top-[60%] -translate-x-1/2 w-14 h-7"
+                  initial={false}
+                  animate={{
+                    scaleY: reaction === 'thinking' ? 0.35 : reaction === 'happy' ? 1.05 : 0.85,
+                    rotate: reaction === 'thinking' ? -2 : 0,
+                  }}
+                  transition={{ duration: 0.25 }}
+                >
+                  <div className="w-full h-full border-b-4 border-[#451a03] rounded-full" />
+                </motion.div>
+
+                {reaction === 'lightbulb' && (
+                  <motion.div
+                    className="absolute -top-3 right-8 w-14 h-14 rounded-full bg-white/90 border-2 flex items-center justify-center"
+                    style={{ borderColor: `${currentScenario.character.color}55` }}
+                    initial={{ scale: 0.7, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ duration: 0.25 }}
+                  >
+                    <span className="text-3xl">💡</span>
+                  </motion.div>
+                )}
+
+                {reaction === 'happy' && (
+                  <>
+                    <motion.div
+                      className="absolute -top-2 left-10 w-8 h-8 rounded-full bg-white/95 border-2 flex items-center justify-center"
+                      style={{ borderColor: `${currentScenario.character.color}55` }}
+                      initial={{ scale: 0.5, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ duration: 0.25 }}
+                    >
+                      <span className="text-xl">✨</span>
+                    </motion.div>
+                    {Array.from({ length: 7 }).map((_, i) => (
+                      <motion.div
+                        key={i}
+                        className="absolute w-2.5 h-2.5 rounded-full bg-yellow-200"
+                        style={{ left: `calc(50% + ${i * 10 - 30}px)` }}
+                        initial={{ top: '18px', opacity: 0 }}
+                        animate={{
+                          opacity: [0, 1, 0],
+                          y: [0, -18, -36],
+                          scale: [0.8, 1.1, 0.9],
+                        }}
+                        transition={{ duration: 1.1, repeat: 0, delay: i * 0.05 }}
+                      />
+                    ))}
+                  </>
+                )}
+              </motion.div>
             </div>
+          </div>
+
+          {/* Atmosphere chip */}
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 rounded-full bg-white/90 shadow-lg">
+            <span>{currentScenario.emoji}</span>
+            <span className="text-xs font-semibold text-[#451a03]">
+              {currentScenario.environment.atmosphere}
+            </span>
           </div>
         </div>
       </div>
@@ -125,7 +256,7 @@ export function WorldViewport() {
       {currentScenario.design.interactiveElements.map((element) => (
         <motion.button
           key={element.id}
-          className="absolute z-10 group"
+          className="absolute z-30 group"
           style={{ left: `${element.x}%`, top: `${element.y}%` }}
           onMouseEnter={() => setHoveredElement(element.id)}
           onMouseLeave={() => setHoveredElement(null)}
