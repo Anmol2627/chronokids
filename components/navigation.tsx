@@ -66,7 +66,6 @@ export function Navigation() {
               transition={{ duration: 0.5 }}
               aria-hidden="true"
             >
-              <span className="text-xl">⏳</span>
             </motion.div>
             <ChronoKidsLogo size="sm" animated={false} />
           </Link>
