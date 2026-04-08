@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useRef, useCallback, type ReactNode } from 'react'
+import { forwardRef, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, ChevronLeft, ChevronRight } from 'lucide-react'
+import HTMLFlipBook from 'react-pageflip'
 import { useGame } from '@/lib/game-state'
 import { scenarioList, type CustomScenario } from '@/lib/custom-scenarios'
 import { OverviewPage } from './overview-page'
@@ -43,15 +44,20 @@ function buildChapters(): AdventureChapter[] {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Book spread structure — each spread = left page + right page       */
+/*  Flipbook page wrapper (react-pageflip requires refs)               */
 /* ------------------------------------------------------------------ */
 
-interface Spread {
-  left: ReactNode
-  right: ReactNode
-  leftNum?: number
-  rightNum?: number
-}
+const FlipPage = forwardRef<HTMLDivElement, { children: ReactNode; className?: string }>(
+  ({ children, className }, ref) => {
+    return (
+      <div ref={ref} className={className}>
+        {children}
+      </div>
+    )
+  },
+)
+
+FlipPage.displayName = 'FlipPage'
 
 /* ------------------------------------------------------------------ */
 /*  Main component                                                     */
@@ -65,19 +71,35 @@ interface AdventureBookProps {
 export function AdventureBook({ isOpen, onClose }: AdventureBookProps) {
   const { state } = useGame()
   const chapters = buildChapters()
-  const [currentSpread, setCurrentSpread] = useState(0)
-  const [flipDirection, setFlipDirection] = useState<'next' | 'prev'>('next')
-  const [isFlipping, setIsFlipping] = useState(false)
+  const flipBookRef = useRef<any>(null)
+  const [currentPage, setCurrentPage] = useState(0)
+  const [bookSize, setBookSize] = useState<{ pageW: number; pageH: number }>({
+    pageW: 440,
+    pageH: 560,
+  })
 
   const completedCount = chapters.filter((c) => c.completed).length
   const totalDiscoveries = chapters.reduce((sum, c) => sum + c.discoveries.length, 0)
 
-  /* Build spreads */
-  const spreads: Spread[] = []
+  useEffect(() => {
+    const compute = () => {
+      const vw = typeof window !== 'undefined' ? window.innerWidth : 1200
+      const vh = typeof window !== 'undefined' ? window.innerHeight : 800
+      const totalW = Math.min(880, Math.floor(vw * 0.9))
+      const pageW = Math.max(280, Math.floor(totalW / 2))
+      const pageH = Math.max(420, Math.min(560, Math.floor(vh * 0.75)))
+      setBookSize({ pageW, pageH })
+    }
+    compute()
+    window.addEventListener('resize', compute)
+    return () => window.removeEventListener('resize', compute)
+  }, [])
 
-  // Spread 0: Cover
-  spreads.push({
-    left: (
+  const pages = useMemo(() => {
+    const result: ReactNode[] = []
+
+    // Cover (front)
+    result.push(
       <div className="book-cover h-full">
         <div className="relative z-10 flex flex-col items-center gap-4">
           <motion.div
@@ -114,8 +136,10 @@ export function AdventureBook({ isOpen, onClose }: AdventureBookProps) {
           ))}
         </div>
       </div>
-    ),
-    right: (
+    )
+
+    // Overview (right after cover)
+    result.push(
       <div className="book-page book-page-right h-full">
         <OverviewPage
           adventuresCompleted={completedCount}
@@ -126,12 +150,10 @@ export function AdventureBook({ isOpen, onClose }: AdventureBookProps) {
         />
         <span className="page-number page-number-right">— 1 —</span>
       </div>
-    ),
-  })
+    )
 
-  // Spread 1: Table of Contents + First Chapter left
-  spreads.push({
-    left: (
+    // Table of contents
+    result.push(
       <div className="book-page book-page-left h-full">
         <div className="h-full flex flex-col relative z-[1]">
           <div className="chapter-ornament">
@@ -176,95 +198,73 @@ export function AdventureBook({ isOpen, onClose }: AdventureBookProps) {
         </div>
         <span className="page-number page-number-left">— 2 —</span>
       </div>
-    ),
-    right: chapters.length > 0 ? (
-      <div className="book-page book-page-right h-full">
-        <ChapterPage chapter={chapters[0]} chapterNumber={1} side="left" />
-        <span className="page-number page-number-right">— 3 —</span>
-      </div>
-    ) : (
-      <div className="book-page book-page-right h-full" />
-    ),
-  })
+    )
 
-  // Chapter spreads (pairs of pages)
-  for (let i = 0; i < chapters.length; i++) {
-    const rightChapter = i + 1 < chapters.length ? chapters[i + 1] : null
-    spreads.push({
-      left: (
+    // First chapter (left page design)
+    if (chapters.length > 0) {
+      result.push(
+        <div className="book-page book-page-right h-full">
+          <ChapterPage chapter={chapters[0]} chapterNumber={1} side="left" />
+          <span className="page-number page-number-right">— 3 —</span>
+        </div>
+      )
+    } else {
+      result.push(<div className="book-page book-page-right h-full" />)
+    }
+
+    // Remaining chapter pages (alternate right/left page designs)
+    for (let i = 0; i < chapters.length; i++) {
+      // Right-page design for chapter i
+      result.push(
         <div className="book-page book-page-left h-full">
           <ChapterPage chapter={chapters[i]} chapterNumber={i + 1} side="right" />
           <span className="page-number page-number-left">— {4 + i * 2} —</span>
         </div>
-      ),
-      right: rightChapter ? (
-        <div className="book-page book-page-right h-full">
-          <ChapterPage chapter={rightChapter} chapterNumber={i + 2} side="left" />
-          <span className="page-number page-number-right">— {5 + i * 2} —</span>
-        </div>
-      ) : (
-        <div className="book-page book-page-right h-full">
-          <SummaryPage chapters={chapters} />
-          <span className="page-number page-number-right">— {5 + i * 2} —</span>
-        </div>
-      ),
-    })
-  }
+      )
 
-  // Add back cover if summary wasn't added
-  const lastSpreadHasSummary = chapters.length > 0
-  if (!lastSpreadHasSummary || chapters.length % 2 === 0) {
-    spreads.push({
-      left: (
-        <div className="book-page book-page-left h-full">
-          <SummaryPage chapters={chapters} />
-          <span className="page-number page-number-left">— {spreads.length * 2} —</span>
-        </div>
-      ),
-      right: (
-        <div className="book-cover h-full">
-          <div className="relative z-10 flex flex-col items-center gap-4">
-            <div className="text-5xl">🌟</div>
-            <h2
-              className="text-2xl font-bold"
-              style={{ fontFamily: "'Fredoka', sans-serif" }}
-            >
-              The Adventure Continues...
-            </h2>
-            <div className="w-24 h-0.5 bg-gradient-to-r from-transparent via-[#fbbf24] to-transparent" />
-            <p className="text-sm opacity-80 mt-2 max-w-xs text-center leading-relaxed">
-              Every great explorer keeps learning. Your next chapter awaits in the Time Portal!
-            </p>
-            <p className="text-xs opacity-40 mt-6">ChronoKids © 2026</p>
+      // Next chapter left-page design (or summary)
+      const next = i + 1 < chapters.length ? chapters[i + 1] : null
+      result.push(
+        next ? (
+          <div className="book-page book-page-right h-full">
+            <ChapterPage chapter={next} chapterNumber={i + 2} side="left" />
+            <span className="page-number page-number-right">— {5 + i * 2} —</span>
           </div>
+        ) : (
+          <div className="book-page book-page-right h-full">
+            <SummaryPage chapters={chapters} />
+            <span className="page-number page-number-right">— {5 + i * 2} —</span>
+          </div>
+        )
+      )
+    }
+
+    // Back cover
+    result.push(
+      <div className="book-cover h-full">
+        <div className="relative z-10 flex flex-col items-center gap-4">
+          <div className="text-5xl">🌟</div>
+          <h2 className="text-2xl font-bold" style={{ fontFamily: "'Fredoka', sans-serif" }}>
+            The Adventure Continues...
+          </h2>
+          <div className="w-24 h-0.5 bg-gradient-to-r from-transparent via-[#fbbf24] to-transparent" />
+          <p className="text-sm opacity-80 mt-2 max-w-xs text-center leading-relaxed">
+            Every great explorer keeps learning. Your next chapter awaits in the Time Portal!
+          </p>
+          <p className="text-xs opacity-40 mt-6">ChronoKids © 2026</p>
         </div>
-      ),
-    })
-  }
+      </div>
+    )
 
-  const totalSpreads = spreads.length
+    return result
+  }, [chapters, completedCount, totalDiscoveries, state.totalXP, state.level])
 
-  const goNext = useCallback(() => {
-    if (isFlipping || currentSpread >= totalSpreads - 1) return
-    setFlipDirection('next')
-    setIsFlipping(true)
-    setTimeout(() => {
-      setCurrentSpread((prev) => Math.min(prev + 1, totalSpreads - 1))
-      setIsFlipping(false)
-    }, 500)
-  }, [isFlipping, currentSpread, totalSpreads])
+  const totalPages = pages.length
+  const canPrev = currentPage > 0
+  const canNext = currentPage < totalPages - 1
 
-  const goPrev = useCallback(() => {
-    if (isFlipping || currentSpread <= 0) return
-    setFlipDirection('prev')
-    setIsFlipping(true)
-    setTimeout(() => {
-      setCurrentSpread((prev) => Math.max(prev - 1, 0))
-      setIsFlipping(false)
-    }, 500)
-  }, [isFlipping, currentSpread])
-
-  const spread = spreads[currentSpread]
+  const goPrev = () => flipBookRef.current?.pageFlip?.()?.flipPrev?.()
+  const goNext = () => flipBookRef.current?.pageFlip?.()?.flipNext?.()
 
   return (
     <AnimatePresence>
@@ -295,21 +295,9 @@ export function AdventureBook({ isOpen, onClose }: AdventureBookProps) {
             transition={{ delay: 0.4 }}
             className="absolute top-4 left-1/2 -translate-x-1/2 z-[110] flex items-center gap-2"
           >
-            {spreads.map((_, i) => (
-              <button
-                key={i}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setFlipDirection(i > currentSpread ? 'next' : 'prev')
-                  setCurrentSpread(i)
-                }}
-                className={`w-2.5 h-2.5 rounded-full transition-all ${
-                  i === currentSpread
-                    ? 'bg-[#fbbf24] scale-125 shadow-lg shadow-amber-500/40'
-                    : 'bg-white/30 hover:bg-white/50'
-                }`}
-              />
-            ))}
+            <span className="text-white/70 text-xs font-semibold">
+              Page {Math.min(currentPage + 1, totalPages)}/{totalPages}
+            </span>
           </motion.div>
 
           {/* Book container */}
@@ -323,98 +311,86 @@ export function AdventureBook({ isOpen, onClose }: AdventureBookProps) {
             onClick={(e) => e.stopPropagation()}
           >
             {/* Navigation arrows */}
-            {currentSpread > 0 && (
+            {canPrev && (
               <motion.button
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 onClick={goPrev}
                 className="book-nav-arrow left"
-                disabled={isFlipping}
+                disabled={!canPrev}
               >
                 <ChevronLeft className="w-6 h-6" />
               </motion.button>
             )}
-            {currentSpread < totalSpreads - 1 && (
+            {canNext && (
               <motion.button
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 onClick={goNext}
                 className="book-nav-arrow right"
-                disabled={isFlipping}
+                disabled={!canNext}
               >
                 <ChevronRight className="w-6 h-6" />
               </motion.button>
             )}
 
-            {/* The book */}
+            {/* The flipbook */}
             <div
               className="relative overflow-hidden rounded-lg"
               style={{
-                width: 'min(880px, 90vw)',
-                height: 'min(560px, 75vh)',
+                width: bookSize.pageW * 2,
+                height: bookSize.pageH,
                 boxShadow:
                   '0 8px 60px rgba(120, 53, 15, 0.35), 0 0 80px rgba(251, 191, 36, 0.12), 0 20px 40px rgba(0,0,0,0.4)',
               }}
             >
-              <AnimatePresence mode="wait" initial={false}>
-                <motion.div
-                  key={currentSpread}
-                  initial={{
-                    rotateY: flipDirection === 'next' ? 8 : -8,
-                    opacity: 0,
-                    scale: 0.97,
-                  }}
-                  animate={{
-                    rotateY: 0,
-                    opacity: 1,
-                    scale: 1,
-                  }}
-                  exit={{
-                    rotateY: flipDirection === 'next' ? -8 : 8,
-                    opacity: 0,
-                    scale: 0.97,
-                  }}
-                  transition={{
-                    duration: 0.5,
-                    ease: [0.25, 0.46, 0.45, 0.94],
-                  }}
-                  className="absolute inset-0 grid grid-cols-2"
-                  style={{ transformStyle: 'preserve-3d' }}
-                >
-                  {/* Left page */}
-                  <div className="relative overflow-hidden">
-                    {spread.left}
-                  </div>
-
-                  {/* Center spine */}
-                  <div
-                    className="absolute left-1/2 -translate-x-1/2 top-0 bottom-0 w-[3px] z-10"
-                    style={{
-                      background: 'linear-gradient(180deg, rgba(139,92,42,0.3) 0%, rgba(139,92,42,0.15) 50%, rgba(139,92,42,0.3) 100%)',
-                      boxShadow: '-2px 0 8px rgba(139,92,42,0.08), 2px 0 8px rgba(139,92,42,0.08)',
-                    }}
-                  />
-
-                  {/* Right page */}
-                  <div className="relative overflow-hidden">
-                    {spread.right}
-                  </div>
-                </motion.div>
-              </AnimatePresence>
+              <HTMLFlipBook
+                ref={flipBookRef}
+                style={{}}
+                startPage={0}
+                width={bookSize.pageW}
+                height={bookSize.pageH}
+                minWidth={280}
+                minHeight={420}
+                maxWidth={520}
+                maxHeight={700}
+                size="fixed"
+                drawShadow
+                maxShadowOpacity={0.35}
+                flippingTime={700}
+                usePortrait={false}
+                startZIndex={0}
+                autoSize={false}
+                clickEventForward={true}
+                useMouseEvents={true}
+                swipeDistance={30}
+                showPageCorners={true}
+                disableFlipByClick={false}
+                showCover
+                mobileScrollSupport
+                onFlip={(e: any) => setCurrentPage(e.data)}
+                className="w-full h-full"
+              >
+                {pages.map((page, idx) => (
+                  <FlipPage key={idx} className="h-full">
+                    {page}
+                  </FlipPage>
+                ))}
+              </HTMLFlipBook>
             </div>
 
             {/* Mobile nav buttons */}
             <div className="md:hidden flex justify-center gap-4 mt-4">
               <button
                 onClick={goPrev}
-                disabled={currentSpread === 0 || isFlipping}
+                disabled={!canPrev}
                 className="px-5 py-2 rounded-full bg-white/10 text-white text-sm border border-white/20 disabled:opacity-30"
               >
                 ← Prev
               </button>
               <button
                 onClick={goNext}
-                disabled={currentSpread === totalSpreads - 1 || isFlipping}
+                disabled={!canNext}
                 className="px-5 py-2 rounded-full bg-white/10 text-white text-sm border border-white/20 disabled:opacity-30"
               >
                 Next →
